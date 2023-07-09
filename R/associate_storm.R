@@ -130,52 +130,81 @@ associate_storm <- function(storms,   # Simple feature collection POINTS (many)
       error = function(e){return(NA)})
   }
 
-  candidate_pts <- track_pts[which(!is.na(paths)),]
-  candidate_paths <- paths[!is.na(paths)]
+  # Continue if any valid paths are found
+  if(any(!is.na(paths))){
+    candidate_pts <- track_pts[which(!is.na(paths)),]
+    candidate_paths <- paths[!is.na(paths)]
 
-  # If multiple possible tracks are found, get their lengths and return the shortest
-  line_lengths <- list()
-  if(length(candidate_paths) > 1){
-    for(i in 1:length(candidate_paths)){
-      line_lengths[[i]] <- geosphere::lengthLine(candidate_paths[[i]])
+    # If multiple possible tracks are found, get their lengths and return the shortest
+    line_lengths <- list()
+    if(length(candidate_paths) > 1){
+      for(i in 1:length(candidate_paths)){
+        line_lengths[[i]] <- geosphere::lengthLine(candidate_paths[[i]])
+      }
+    } else {
+      line_lengths[[1]] <- geosphere::lengthLine(candidate_paths[[1]])
     }
+    line_lengths <- unlist(line_lengths)
+    shortest_line <- which.min(line_lengths)
+    matched_pt <- sf::st_as_sf(candidate_pts[shortest_line,])
+    matched_path <- sf::st_as_sf(candidate_paths[[shortest_line]])
+    sf::st_crs(matched_path) <- 4326
+
+    # Draw map -------------------------------------------------------------
+    p <-
+      ggplot2::ggplot() +
+      tidyterra::geom_spatraster(data = precip) +
+      ggplot2::geom_sf(data = world_map_sf, colour = "darkgrey", fill = NA) +
+      ggplot2::geom_sf(data = precip_contour, ggplot2::aes(colour = "Precipitation regions"), fill = NA) +
+      ggplot2::geom_sf(data = storms, ggplot2::aes(colour = "Storm track points"), size = 3) +
+      ggplot2::geom_sf(data = matched_pt, ggplot2::aes(colour = "Matched storm"), size = 3) +
+      ggplot2::geom_sf(data = storms_buffer, ggplot2::aes(colour = "Storm track tolerance"), size = 2, fill = NA) +
+      ggplot2::geom_sf(data = interest, ggplot2::aes(colour = "Region of interest"), size = 2, fill = NA) +
+      ggplot2::geom_sf(data = matched_path, ggplot2::aes(colour = "Matched path")) +
+      ggplot2::scale_fill_viridis_c("Total precip (mm/hour)") +
+      ggplot2::scale_colour_manual(
+        "Legend",
+        values = c(
+          "Precipitation regions" = "red",
+          "Matched storm" = "red",
+          "Storm track points" = "orange",
+          "Storm track tolerance" = "orange",
+          "Region of interest" = "purple",
+          "Matched path" = "green"
+        )
+      ) +
+      ggplot2::scale_x_continuous(limits = c(extents["xmin"], extents["xmax"])) +
+      ggplot2::scale_y_continuous(limits = c(extents["ymin"], extents["ymax"]))
+
   } else {
-    line_lengths[[1]] <- geosphere::lengthLine(candidate_paths[[1]])
+    candidate_pts <- NA
+    candidate_paths <- NA
+    matched_pt <- NA
+    matched_path <- NA
+
+    p <-
+      ggplot2::ggplot() +
+      tidyterra::geom_spatraster(data = precip) +
+      ggplot2::geom_sf(data = world_map_sf, colour = "darkgrey", fill = NA) +
+      ggplot2::geom_sf(data = precip_contour, ggplot2::aes(colour = "Precipitation regions"), fill = NA) +
+      ggplot2::geom_sf(data = storms, ggplot2::aes(colour = "Storm track points"), size = 3) +
+      ggplot2::geom_sf(data = storms_buffer, ggplot2::aes(colour = "Storm track tolerance"), size = 2, fill = NA) +
+      ggplot2::geom_sf(data = interest, ggplot2::aes(colour = "Region of interest"), size = 2, fill = NA) +
+      ggplot2::scale_fill_viridis_c("Total precip (mm/hour)") +
+      ggplot2::scale_colour_manual(
+        "Legend",
+        values = c(
+          "Precipitation regions" = "red",
+          "Matched storm" = "red",
+          "Storm track points" = "orange",
+          "Storm track tolerance" = "orange",
+          "Region of interest" = "purple",
+          "Matched path" = "green"
+        )
+      ) +
+      ggplot2::scale_x_continuous(limits = c(extents["xmin"], extents["xmax"])) +
+      ggplot2::scale_y_continuous(limits = c(extents["ymin"], extents["ymax"]))
   }
-  line_lengths <- unlist(line_lengths)
-  shortest_line <- which.min(line_lengths)
-  matched_pt <- sf::st_as_sf(candidate_pts[shortest_line,])
-  matched_path <- sf::st_as_sf(candidate_paths[[shortest_line]])
-  sf::st_crs(matched_path) <- 4326
-
-
-
-
-  # Draw map -------------------------------------------------------------
-  p <-
-    ggplot2::ggplot() +
-    tidyterra::geom_spatraster(data = precip) +
-    ggplot2::geom_sf(data = world_map_sf, colour = "darkgrey", fill = NA) +
-    ggplot2::geom_sf(data = precip_contour, ggplot2::aes(colour = "Precipitation regions"), fill = NA) +
-    ggplot2::geom_sf(data = storms, ggplot2::aes(colour = "Storm track points"), size = 3) +
-    ggplot2::geom_sf(data = matched_pt, ggplot2::aes(colour = "Matched storm"), size = 3) +
-    ggplot2::geom_sf(data = storms_buffer, ggplot2::aes(colour = "Storm track tolerance"), size = 2, fill = NA) +
-    ggplot2::geom_sf(data = interest, ggplot2::aes(colour = "Region of interest"), size = 2, fill = NA) +
-    ggplot2::geom_sf(data = matched_path, ggplot2::aes(colour = "Matched path")) +
-    ggplot2::scale_fill_viridis_c("Total precip (mm/hour)") +
-    ggplot2::scale_colour_manual(
-      "Legend",
-      values = c(
-        "Precipitation regions" = "red",
-        "Matched storm" = "red",
-        "Storm track points" = "orange",
-        "Storm track tolerance" = "orange",
-        "Region of interest" = "purple",
-        "Matched path" = "green"
-      )
-    ) +
-    ggplot2::scale_x_continuous(limits = c(extents["xmin"], extents["xmax"])) +
-    ggplot2::scale_y_continuous(limits = c(extents["ymin"], extents["ymax"]))
 
   # Arrange results ---------------------------------------------------------
   output <- list(

@@ -68,7 +68,7 @@ read_track <- function(file) {
 
 
   # Set up output as a single dataframe and declare data types ----------------
-  track_output <- bind_rows(track_data)
+  track_output <- dplyr::bind_rows(track_data)
   track_output$timestep <- as.numeric(track_output$timestep)
   track_output$longitude <- as.numeric(track_output$longitude)
   track_output$latitude <- as.numeric(track_output$latitude)
@@ -91,7 +91,7 @@ read_track <- function(file) {
 #'
 add_timestamp_to_tracks <- function(track_df, start_date) {
   track_df$day <- ceiling(track_df$timestep / 4)
-  track_df$time <- case_when(
+  track_df$time <- dplyr::case_when(
     track_df$timestep %% 4 == 1 ~ "00:00",
     track_df$timestep %% 4 == 2 ~ "06:00",
     track_df$timestep %% 4 == 3 ~ "12:00",

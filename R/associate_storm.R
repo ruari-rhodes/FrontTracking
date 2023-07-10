@@ -2,32 +2,51 @@
 
 
 
-#' associate_storm Identifies the most likely storm track point to be associated
-#' with a weather event in a defined interest region, based on the ability of
-#' the algorithm to draw a path through a continuous region of precipitation.
-#' The function first identifies regions of precipitation exceeding a given
-#' threshold. It then attempts to draw lines through these regions of
-#' precipitation to connect the region of interest with storm track centres. If
-#' more than one track is found to be linked to the interest region via
-#' precipitation bands, the track joined to the interest region via the shortest
-#' path through precipitation bands is selected.
+#'associate_storm
 #'
-#' @param storms data.frame, output of read_track()
-#' @param precip Raster or spatRaster map of precipitation
-#' @param interest sf Polygons object detailing the region of interest
-#' @param storm_radius numeric, a threshold identifying how near to a precip
-#'   band a track centre must be to be considered to be associated with the
-#'   band.
-#' @param precip_threshold numeric, a threshold value identifying how intense
-#'   precipitation must be to be considered to be a "band"
+#'Identifies the most likely storm track point to be associated
+#'with a weather event in a defined interest region, based on the ability of the
+#'algorithm to draw a path through a continuous region of precipitation. The
+#'function first identifies regions of precipitation exceeding a given
+#'threshold. It then attempts to draw lines through these regions of
+#'precipitation to connect the region of interest with storm track centres. If
+#'more than one track is found to be linked to the interest region via
+#'precipitation bands, the track joined to the interest region via the shortest
+#'path through precipitation bands is selected.
 #'
-#' @return list containing Precip, PrecipRegions, MatchedStorm, MatchedPath,
-#'   Interest, AllStorms, StormBuffers, Plot
+#'@param storms data.frame, output of [FrontTracking::read_track()]
+#'@param precip Raster or spatRaster map of precipitation
+#'@param interest sf Polygons object detailing the region of interest
+#'@param storm_radius numeric, a threshold identifying how near to a precip band
+#'  a track centre must be to be considered to be associated with the band.
+#'@param precip_threshold numeric, a threshold value identifying how intense
+#'  precipitation must be to be considered to be a "band"
+#'@param return_plot boolean, should a plot be generated demonstrating the output?
+#'
+#'@return list containing Precip, PrecipRegions, MatchedStorm, MatchedPath,
+#'  Interest, AllStorms, StormBuffers, Plot
+#'
+#'@seealso
+#'  [FrontTracking::read_track()] (required for loading Hodges' TRACK data)
+#'
+#'  [terra::rast()] (required for loading NCDF precipitation data)
+#'
+#'@examples
+#'example_precip <- terra::rast(system.file("extdata", "EXAMPLE_era5_precip.tif", package = "FrontTracking"))
+#'
+#'results <- associate_storm(
+#'  storms = example_storms,
+#'  precip = example_precip,
+#'  interest = england_wales_box,
+#'  storm_radius = 250,
+#'  precip_threshold = 1.5
+#' )
 associate_storm <- function(storms,   # Simple feature collection POINTS (many)
                             precip,   # spatRaster
                             interest, # Simple feature collection POLYGON (one)
                             storm_radius, # Numeric
-                            precip_threshold # Numeric
+                            precip_threshold, # Numeric
+                            return_plot = TRUE
 ){
 
   # If required, convert precip from raster to spatRaster -------------------
@@ -151,59 +170,62 @@ associate_storm <- function(storms,   # Simple feature collection POINTS (many)
     sf::st_crs(matched_path) <- 4326
 
     # Draw map -------------------------------------------------------------
-    p <-
-      ggplot2::ggplot() +
-      tidyterra::geom_spatraster(data = precip) +
-      ggplot2::geom_sf(data = world_map_sf, colour = "darkgrey", fill = NA) +
-      ggplot2::geom_sf(data = precip_contour, ggplot2::aes(colour = "Precipitation regions"), fill = NA) +
-      ggplot2::geom_sf(data = storms, ggplot2::aes(colour = "Storm track points"), size = 3) +
-      ggplot2::geom_sf(data = matched_pt, ggplot2::aes(colour = "Matched storm"), size = 3) +
-      ggplot2::geom_sf(data = storms_buffer, ggplot2::aes(colour = "Storm track tolerance"), size = 2, fill = NA) +
-      ggplot2::geom_sf(data = interest, ggplot2::aes(colour = "Region of interest"), size = 2, fill = NA) +
-      ggplot2::geom_sf(data = matched_path, ggplot2::aes(colour = "Matched path")) +
-      ggplot2::scale_fill_viridis_c("Total precip (mm/hour)") +
-      ggplot2::scale_colour_manual(
-        "Legend",
-        values = c(
-          "Precipitation regions" = "red",
-          "Matched storm" = "red",
-          "Storm track points" = "orange",
-          "Storm track tolerance" = "orange",
-          "Region of interest" = "purple",
-          "Matched path" = "green"
-        )
-      ) +
-      ggplot2::scale_x_continuous(limits = c(extents["xmin"], extents["xmax"])) +
-      ggplot2::scale_y_continuous(limits = c(extents["ymin"], extents["ymax"]))
-
+    if(return_plot){
+      p <-
+        ggplot2::ggplot() +
+        tidyterra::geom_spatraster(data = precip) +
+        ggplot2::geom_sf(data = world_map_sf, colour = "darkgrey", fill = NA) +
+        ggplot2::geom_sf(data = precip_contour, ggplot2::aes(colour = "Precipitation regions"), fill = NA) +
+        ggplot2::geom_sf(data = storms, ggplot2::aes(colour = "Storm track points"), size = 3) +
+        ggplot2::geom_sf(data = matched_pt, ggplot2::aes(colour = "Matched storm"), size = 3) +
+        ggplot2::geom_sf(data = storms_buffer, ggplot2::aes(colour = "Storm track tolerance"), size = 2, fill = NA) +
+        ggplot2::geom_sf(data = interest, ggplot2::aes(colour = "Region of interest"), size = 2, fill = NA) +
+        ggplot2::geom_sf(data = matched_path, ggplot2::aes(colour = "Matched path")) +
+        ggplot2::scale_fill_viridis_c("Total precip (mm/hour)") +
+        ggplot2::scale_colour_manual(
+          "Legend",
+          values = c(
+            "Precipitation regions" = "red",
+            "Matched storm" = "red",
+            "Storm track points" = "orange",
+            "Storm track tolerance" = "orange",
+            "Region of interest" = "purple",
+            "Matched path" = "green"
+          )
+        ) +
+        ggplot2::scale_x_continuous(limits = c(extents["xmin"], extents["xmax"])) +
+        ggplot2::scale_y_continuous(limits = c(extents["ymin"], extents["ymax"]))
+    }
   } else {
     candidate_pts <- NA
     candidate_paths <- NA
     matched_pt <- NA
     matched_path <- NA
 
-    p <-
-      ggplot2::ggplot() +
-      tidyterra::geom_spatraster(data = precip) +
-      ggplot2::geom_sf(data = world_map_sf, colour = "darkgrey", fill = NA) +
-      ggplot2::geom_sf(data = precip_contour, ggplot2::aes(colour = "Precipitation regions"), fill = NA) +
-      ggplot2::geom_sf(data = storms, ggplot2::aes(colour = "Storm track points"), size = 3) +
-      ggplot2::geom_sf(data = storms_buffer, ggplot2::aes(colour = "Storm track tolerance"), size = 2, fill = NA) +
-      ggplot2::geom_sf(data = interest, ggplot2::aes(colour = "Region of interest"), size = 2, fill = NA) +
-      ggplot2::scale_fill_viridis_c("Total precip (mm/hour)") +
-      ggplot2::scale_colour_manual(
-        "Legend",
-        values = c(
-          "Precipitation regions" = "red",
-          "Matched storm" = "red",
-          "Storm track points" = "orange",
-          "Storm track tolerance" = "orange",
-          "Region of interest" = "purple",
-          "Matched path" = "green"
-        )
-      ) +
-      ggplot2::scale_x_continuous(limits = c(extents["xmin"], extents["xmax"])) +
-      ggplot2::scale_y_continuous(limits = c(extents["ymin"], extents["ymax"]))
+    if(return_plot){
+      p <-
+        ggplot2::ggplot() +
+        tidyterra::geom_spatraster(data = precip) +
+        ggplot2::geom_sf(data = world_map_sf, colour = "darkgrey", fill = NA) +
+        ggplot2::geom_sf(data = precip_contour, ggplot2::aes(colour = "Precipitation regions"), fill = NA) +
+        ggplot2::geom_sf(data = storms, ggplot2::aes(colour = "Storm track points"), size = 3) +
+        ggplot2::geom_sf(data = storms_buffer, ggplot2::aes(colour = "Storm track tolerance"), size = 2, fill = NA) +
+        ggplot2::geom_sf(data = interest, ggplot2::aes(colour = "Region of interest"), size = 2, fill = NA) +
+        ggplot2::scale_fill_viridis_c("Total precip (mm/hour)") +
+        ggplot2::scale_colour_manual(
+          "Legend",
+          values = c(
+            "Precipitation regions" = "red",
+            "Matched storm" = "red",
+            "Storm track points" = "orange",
+            "Storm track tolerance" = "orange",
+            "Region of interest" = "purple",
+            "Matched path" = "green"
+          )
+        ) +
+        ggplot2::scale_x_continuous(limits = c(extents["xmin"], extents["xmax"])) +
+        ggplot2::scale_y_continuous(limits = c(extents["ymin"], extents["ymax"]))
+    }
   }
 
   # Arrange results ---------------------------------------------------------
@@ -214,9 +236,12 @@ associate_storm <- function(storms,   # Simple feature collection POINTS (many)
     MatchedPath = matched_path,
     Interest = interest,
     AllStorms = storms_cropped,
-    StormBuffers = storms_buffer,
-    Plot = p
+    StormBuffers = storms_buffer
   )
+
+  if(return_plot){
+    output$Plot <- p
+  }
 
   return(output)
 

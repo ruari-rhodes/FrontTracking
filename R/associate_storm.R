@@ -63,7 +63,12 @@ associate_storm <- function(storms,   # Simple feature collection POINTS (many)
 
 
   # Find centroid of interest region -----------------------------------
-  interest_centroid <- sf::st_centroid(interest)
+  # NB: st_centroid will throw a warning due to the lat/lon projection of the
+  # input data. Since strict accuracy is not necessary, we can suppress this
+  # warning.
+  interest_centroid <- suppressWarnings({
+    sf::st_centroid(interest)
+  })
 
   # Create precip contour ---------------------------------------------
   # Create contour
@@ -76,7 +81,11 @@ associate_storm <- function(storms,   # Simple feature collection POINTS (many)
   # Process storm tracks ----------------------------------------------
 
   # Crop stormtracks to precip data region
-  storms_cropped <- sf::st_crop(storms, terra::ext(precip))
+  # NB: again this throws a warning due to that lat/lon projection. We are
+  # safe to suppress this.
+  storms_cropped <- suppressWarnings({
+    sf::st_crop(storms, terra::ext(precip))
+  })
 
   # Create 250km buffer around tracks
   storms_lambert <- sf::st_transform(storms_cropped, "EPSG:3035")
@@ -145,7 +154,7 @@ associate_storm <- function(storms,   # Simple feature collection POINTS (many)
   paths <- list()
   for(i in 1:nrow(track_pts)){
     paths[[i]] <- tryCatch(
-      gdistance::shortestPath(tl, interest_pt, track_pts[i,], output = "SpatialLines"),
+      suppressWarnings({gdistance::shortestPath(tl, interest_pt, track_pts[i,], output = "SpatialLines")}),
       error = function(e){return(NA)})
   }
 

@@ -4,7 +4,14 @@
 \alias{associate_storm}
 \title{associate_storm}
 \usage{
-associate_storm(storms, precip, interest, storm_radius, precip_threshold)
+associate_storm(
+  storms,
+  precip,
+  interest,
+  storm_radius,
+  precip_threshold,
+  return_plot = TRUE
+)
 }
 \arguments{
 \item{storms}{data.frame, output of \code{\link[=read_track]{read_track()}}}
@@ -18,6 +25,8 @@ a track centre must be to be considered to be associated with the band.}
 
 \item{precip_threshold}{numeric, a threshold value identifying how intense
 precipitation must be to be considered to be a "band"}
+
+\item{return_plot}{boolean, should a plot be generated demonstrating the output?}
 }
 \value{
 list containing Precip, PrecipRegions, MatchedStorm, MatchedPath,
@@ -44,6 +53,7 @@ results <- associate_storm(
  storm_radius = 250,
  precip_threshold = 1.5
 )
+
 }
 \seealso{
 \code{\link[=read_track]{read_track()}} (required for loading Hodges' TRACK data)
